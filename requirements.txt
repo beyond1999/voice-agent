@@ -1,0 +1,14 @@
+SpeechRecognition
+pyaudio
+pyautogui
+pygetwindow
+keyboard
+fastapi
+faster_whisper
+uvicorn
+pydantic
+uvicorn
+httpx
+aiohttp
+
+

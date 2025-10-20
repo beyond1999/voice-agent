@@ -1,5 +1,0 @@
-SpeechRecognition
-pyaudio
-pyautogui
-pygetwindow
-keyboard
