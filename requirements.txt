@@ -10,5 +10,5 @@ pydantic
 uvicorn
 httpx
 aiohttp
-
-
+langchain_core
+langgraph

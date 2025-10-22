@@ -9,7 +9,7 @@ from typing import List, Dict, Any, Optional
 import requests
 import speech_recognition as sr
 import pyttsx3
-
+from backend.prompt import SYSTEM_PROMPT
 
 # ================== 配置 ==================
 LLM_ENDPOINT = os.getenv("LLM_ENDPOINT", "http://127.0.0.1:8001/llm")
@@ -149,9 +149,7 @@ class ASR:
 
 
 # ================== 主循环 ==================
-SYSTEM_PROMPT = (
-    "你是一个语音对话助手。回答要简洁，分点或短句优先。"
-)
+
 
 def main():
     print("== Voice Chat Client ==")
@@ -177,7 +175,7 @@ def main():
         print(f"👤 你：{user_text}")
         llm.add_user(user_text)
 
-        reply = llm.chat(temperature=0.6, max_tokens=512)
+        reply = llm.chat(temperature=0.2, max_tokens=512)
         llm.add_assistant(reply)
         print(f"🤖 助手：{reply}\n")
 

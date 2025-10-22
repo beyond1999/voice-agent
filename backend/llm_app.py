@@ -10,11 +10,13 @@ from pydantic import BaseModel, Field
 import uvicorn
 import httpx
 
+from function_call.function_call import function_map
+
 # ================== llama.cpp 服务配置 ==================
 # 你的启动脚本：
 # ./llama-server -m Qwen2.5-3B-Instruct-Q4_K_M.gguf --host 0.0.0.0 --port 8080 ...
 # 这里默认按 OpenAI 兼容接口 /v1/chat/completions 调用；若不存在会自动回退到 /completion。
-LLAMA_BASE = os.getenv("LLAMA_BASE", "http://127.0.0.1:8080")
+LLAMA_BASE = os.getenv("LLAMA_BASE", "http://127.0.0.1:8003")
 LLAMA_MODEL = os.getenv("LLAMA_MODEL", "qwen2.5-3b-instruct")  # 仅用于标识；llama-server会忽略或覆盖
 LLAMA_TIMEOUT = float(os.getenv("LLAMA_TIMEOUT", "30"))
 
@@ -76,6 +78,7 @@ async def _chat_via_openai_compat(req: ChatReq) -> Tuple[str, str]:
         data = r.json()
         text = (data.get("choices", [{}])[0].get("message", {}).get("content") or "").strip()
         used_model = data.get("model", LLAMA_MODEL)
+
         return text, used_model
 
 
@@ -133,8 +136,30 @@ async def llm_endpoint(req: ChatReq, x_idempotency_key: Optional[str] = Header(N
         # 兜底（不抛 500），避免前端体验断裂
         text = f"[本地模型暂不可用] {type(e).__name__}: {e}"
         model_used = "llama.cpp:error"
+    try:
+        data = json.loads(text)
+    except Exception:
+        data = {}
 
-    out = {"text": text, "model": model_used}
+    thought = data.get("thought", "")
+    action = data.get("action", {})
+    observation = data.get("observation", "")
+    answer = data.get("answer", "好的")
+    print(f"{thought=}, {action=}, {observation=}, {answer=}")
+
+    if action:
+        function_name = action.get("name")
+        args = action.get("args", {})
+        try:
+            function_map[function_name](args)
+        except Exception as e:
+            # 捕获所有异常并打印
+            print("[Error]", e)
+
+
+    out = {"text": answer, "model": model_used}
+
+
     if x_idempotency_key:
         _IDEM[x_idempotency_key] = (time.time(), out)
     return ChatResp(**out)
