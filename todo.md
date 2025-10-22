@@ -1,10 +1,15 @@
-LLM作为骨架
-注册方法
-音乐tool
-写文章 tool
-发邮件tool
-视觉
+- [ ] LLM作为骨架
+- [ ] 注册方法
+- [ ] 音乐tool
+- [ ] 写文章 tool
+- [ ] 发邮件tool
+- [ ] 视觉
+- [ ] RAG
+- [ ] 持久化
+- [ ] 金融播报，股价预测
+- [ ] 浏览器控制（Selenium / Playwright）
+- [ ] 文件搜索与摘要（Chroma / LangChain RAG）
+- [ ] 日程提醒（接入 Google Calendar）
+- [ ] 系统语音播报（Edge-TTS / pyttsx3）
+- [ ] 图像生成 / OCR 工具链
 
-RAG
-持久化
-金融播报，股价预测
