@@ -70,11 +70,11 @@ def execute_command(command: str) -> str:
             
     except Exception as e:
         return f"执行命令时发生错误: {str(e)}"
-
+LLM_API_KEY = os.getenv("LLM_API_KEY")
 llm_qwen = ChatOpenAI(
     model="qwen-max",
     base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
-    api_key=SecretStr("sk-eaae534c121f4c6da4c4c36c987ab275"),
+    api_key=SecretStr(LLM_API_KEY),
     streaming=True,
 )
 
