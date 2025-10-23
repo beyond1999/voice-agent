@@ -7,5 +7,5 @@ def play_music(*args):
     if app_path:
         open_file(app_path)
         # press_space()
-        time.sleep(1)
+        time.sleep(2)
         qqmusic_hotkey_play_pause_v2()
