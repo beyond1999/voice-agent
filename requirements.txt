@@ -12,3 +12,4 @@ httpx
 aiohttp
 langchain_core
 langgraph
+Pillow
