@@ -3,6 +3,7 @@ import os
 import time
 import json
 import traceback
+import ast
 from typing import List, Dict, Optional, Tuple
 
 import httpx
@@ -28,7 +29,7 @@ CLOUD_BASE_DEFAULT = "https://api.deepseek.com/v1"
 CLOUD_MODEL_DEFAULT = "deepseek-chat"
 CLOUD_AUTH_SCHEME_DEFAULT = "Bearer"
 # 你说先写死 Key，就写在这里；也支持用环境变量覆盖
-LLM_API_KEY = "" # os.getenv("LLM_API_KEY", "sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxx")
+LLM_API_KEY = "sk-f415f1812d0b406792822e9cef183c6b" # os.getenv("LLM_API_KEY", "sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxx")
 LLM_AUTH_SCHEME = os.getenv("LLM_AUTH_SCHEME", CLOUD_AUTH_SCHEME_DEFAULT)
 
 # ================== 统一配置读取 ==================
@@ -174,7 +175,21 @@ async def llm_endpoint(req: ChatReq, x_idempotency_key: Optional[str] = Header(N
     # JSON-ReAct 解析（可选：模型若输出普通文本，这里会走 except）
     try:
         data = json.loads(text)
-    except Exception:
+    except json.JSONDecodeError:
+        print("警告：LLM 输出不是标准 JSON，尝试使用 ast.literal_eval 进行修复...")
+        try:
+            # ast.literal_eval 可以安全地解析 Python 字面量 (如字典、列表)
+            # 这是一个非常好的后备方案
+            data = ast.literal_eval(text)
+            if not isinstance(data, dict):
+                print(f"修复失败：ast.literal_eval 解析结果不是字典，而是 {type(data).__name__}。")
+                data = {} # 如果解析出来不是字典，也当作失败
+        except (ValueError, SyntaxError) as e:
+            # 如果两种方法都失败了，打印错误并继续
+            print(f"错误：无法将 LLM 输出解析为 JSON 或 Python 字面量: {e}")
+            data = {}
+    except Exception as e:
+        print(f"解析 LLM 输出时发生未知错误: {e}")
         data = {}
 
     thought = data.get("thought", "")
@@ -189,7 +204,7 @@ async def llm_endpoint(req: ChatReq, x_idempotency_key: Optional[str] = Header(N
         args = action.get("args", {})
         try:
             if function_name in function_map:
-                function_map[function_name](args)
+                function_map[function_name](**args)
             else:
                 print(f"[Warn] unknown function: {function_name}")
         except Exception as e:

@@ -31,7 +31,7 @@ def _save_with_python_docx(full_path: str, content: str) -> str:
 def _save_with_pywin32_word(full_path: str, content: str) -> str:
     try:
         import win32com.client as win32
-        word = win32.gencache.EnsureDispatch("Word.Application")
+        word = win32.Dispatch("Word.Application")
         word.Visible = False
         doc = word.Documents.Add()
         # 写入内容
