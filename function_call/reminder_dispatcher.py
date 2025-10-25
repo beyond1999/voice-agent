@@ -1,26 +1,32 @@
 import datetime as dt
 from typing import List, Optional
+# 1. 导入新的“时间翻译器”
+import dateparser
+
 from .google_calendar_tools import create_calendar_event
 from .windows_tools import set_native_reminder
 
 def set_reminder(
     summary: str, 
-    start_time_iso: str, 
+    time_expression: str, # 2. 参数名改变，现在接收的是原始时间短语
     platforms: List[str],
-    end_time_iso: Optional[str] = None,
     description: Optional[str] = ""
 ) -> str:
     """
-    总调度器：根据用户指定的平台设置一个或多个提醒。
+    总调度器：使用 dateparser 解析自然语言时间，并设置提醒。
     """
-    try:
-        start_dt = dt.datetime.fromisoformat(start_time_iso)
-    except ValueError:
-        return f"错误：时间格式 '{start_time_iso}' 无效，必须是 ISO 8601 格式。"
+    # 3. 使用 dateparser 将“明天下午3点”这样的短语翻译成精确的时间
+    #    'PREFER_DATES_FROM': 'future' 能确保 "10:30" 被理解为未来的时间
+    start_dt = dateparser.parse(time_expression, settings={'PREFER_DATES_FROM': 'future'})
 
-    if not end_time_iso:
-        end_dt = start_dt + dt.timedelta(hours=1)
-        end_time_iso = end_dt.isoformat()
+    # 如果翻译失败，就礼貌地告诉用户
+    if start_dt is None:
+        return f"抱歉，我无法理解您说的时间 '{time_expression}'。您可以试试说“明天上午10点”或者“1小时后”。"
+
+    # 翻译成功后，我们才开始准备各种格式的时间
+    start_time_iso = start_dt.isoformat()
+    end_dt = start_dt + dt.timedelta(hours=1)
+    end_time_iso = end_dt.isoformat()
 
     results = []
     
@@ -48,6 +54,6 @@ def set_reminder(
         results.append(f"Windows 本机提醒: {windows_result}")
 
     if not results:
-        return "错误：未指定有效的提醒平台。请选择 'google', 'windows', 或 'both'。"
+        return "错误：未指定有效的提醒平台。"
 
     return "\n".join(results)

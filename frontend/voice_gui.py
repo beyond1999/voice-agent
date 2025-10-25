@@ -292,10 +292,21 @@ class ModernVoiceChat(tk.Tk):
         bubble_width = text_width + 30
         bubble_height = text_height + 20
         
-        # 2. 创建圆角背景图片
-        bg_image = create_rounded_bubble(bubble_width, bubble_height, 20, bubble_color)
-        if not hasattr(self, '_bubble_images'): self._bubble_images = []
-        self._bubble_images.append(bg_image)
+        # --- 核心优化：为圆角图片添加缓存 ---
+        # 1. 初始化缓存字典（如果不存在）
+        if not hasattr(self, '_bubble_image_cache'):
+            self._bubble_image_cache = {}
+
+        # 2. 使用 (宽, 高, 颜色) 作为缓存的 key
+        cache_key = (bubble_width, bubble_height, bubble_color)
+
+        # 3. 检查缓存中是否已有此图片
+        if cache_key in self._bubble_image_cache:
+            bg_image = self._bubble_image_cache[cache_key]
+        else:
+            # 4. 如果没有，则生成新图片，并存入缓存
+            bg_image = create_rounded_bubble(bubble_width, bubble_height, 20, bubble_color)
+            self._bubble_image_cache[cache_key] = bg_image
 
         # 3. 创建最终的气泡 Label
         bubble_lbl = tk.Label(
@@ -417,10 +428,12 @@ class ModernVoiceChat(tk.Tk):
         self.history.append({"role": "user", "text": text, "ts": ts})
         self._ui(self._add_bubble, "user", text, ts)
 
-    def _append_assistant(self, text: str):
+    def _append_assistant(self, text: str, msg_type: str = "normal"): # <--- 1. 添加 msg_type 参数，并设默认值
         ts = time.strftime("%H:%M:%S")
-        self.history.append({"role": "assistant", "text": text, "ts": ts})
-        self._ui(self._add_bubble, "assistant", text, ts)
+        # 2. 将消息类型也存入历史记录，方便未来扩展
+        self.history.append({"role": "assistant", "text": text, "ts": ts, "type": msg_type}) 
+        # 3. 将 msg_type 参数传递给 _add_bubble 函数
+        self._ui(self._add_bubble, "assistant", text, ts, msg_type)
 
     def _llm_reply(self, user_text: str):
         try:
@@ -428,13 +441,24 @@ class ModernVoiceChat(tk.Tk):
             self.llm.add_user(user_text)
             reply = self.llm.chat(temperature=0.6, max_tokens=512)
             self.llm.add_assistant(reply)
+
+            # --- 核心修复：所有UI和TTS操作都通过UI队列派发 ---
+
+            # 1. 派发“添加助手气泡”的任务到主线程
             self._append_assistant(reply)
+
+            # 2. 如果TTS开启，同样派发“语音播报”的任务到主线程
             if self.tts_enabled.get():
-                self.tts.say(reply)
+                self._ui(self.tts.say, reply) # <--- 正确的用法！
+
+            # 3. 派发“更新状态”的任务到主线程
             self._set_status("Ready", "idle")
+
         except Exception as e:
-            self._append_assistant(f"[Error] {type(e).__name__}: {e}")
-            self._set_status("Error", "error")
+            error_msg = f"[Error] {type(e).__name__}: {e}"
+            # 派发“添加错误气泡”和“更新状态”的任务
+            self._append_assistant(error_msg, msg_type="error")
+            self._set_status("Error", mode="error")
 
     def _once_asr_round(self):
         try:

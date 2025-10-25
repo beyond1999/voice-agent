@@ -15,7 +15,7 @@
 | 🧩 工具调用      | 自动调用系统命令、文件操作、音乐控制、Word 写作等             | `LangGraph`, `@tool` 装饰器  |
 | 🔁 思维链推理     | 使用 LangGraph 实现 ReAct 框架（推理+行动）         | `create_react_agent`      |
 | 🧠 记忆系统      | FileSaver 持久化多轮对话与执行状态                  | 自定义 checkpoint            |
-| 🖥 桌面助手      | 控制本地应用（QQ音乐、Word）、执行命令行任务               | `subprocess`, `win32api`  |
+| 🖥 桌面助手      | 控制本地应用（QQ音乐、Word、浏览器、日历）、执行命令行任务 | `subprocess`, `win32api`  |
 
 ---
 
@@ -130,15 +130,17 @@ Agent 通过 LangGraph 实现多步“思考→行动→反思”循环，并可
 
 ## 🗂️ 已实现工具列表
 
-| 工具名称                                        | 功能                              | 示例                              |
-| ------------------------------------------- | ------------------------------- | ------------------------------- |
-| `open_app(keyword)`                         | 打开桌面应用（.lnk）                    | 打开QQ音乐                          |
-| `play_music()`                              | 播放/暂停QQ音乐                       | 播放音乐                            |
-| `media_control(op)`                         | 控制音量、下一曲、静音等                    | 调高音量                            |
-| `write_article_in_word(file_name, content)` | 在Word中写入文章                      | 写一篇AI主题文章                       |
-| `execute_command(command)`                  | 执行命令行操作                         | ls / dir / echo / python xxx.py |
-| 文件读写                                        | 通过 FileManagementToolkit 操作文件系统 | 创建、保存、删除文件                      |
-
+| 工具名称                                        | 功能                              | 示例                                |
+| ------------------------------------------- | ------------------------------- | -------------------------------          |
+| `open_app(keyword)`                         | 打开桌面应用（.lnk）                    | 打开QQ音乐                        |
+| `play_music()`                              | 播放/暂停QQ音乐                       | 播放音乐                             |
+| `media_control(op)`                         | 控制音量、下一曲、静音等                    | 调高音量                       |
+| `write_article_in_word(file_name, content)` | 在Word中写入文章                      | 写一篇AI主题文章                     |
+| `execute_command(command)`                  | 执行命令行操作                         | ls / dir / echo / python xxx.py    |
+| 文件读写                                     | 通过 FileManagementToolkit 操作文件系统 | 创建、保存、删除文件               |
+| `search_web`                                |搜索或访问特定网页                       |打开B站，用xx搜索xxx                 |
+| `send_email`                                |发送邮件                                |向xxx邮箱发送主题为xxx,内容是xxx的邮件|
+| `create win calendar or google calendar`    |创建本地日程或谷歌日程，并查看已有日程     |提醒我明天下午三点开会               |
 ---
 
 ## 🧩 模块化扩展

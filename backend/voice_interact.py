@@ -4,13 +4,14 @@ import uuid
 import json
 import hashlib
 import threading
+import typing
 from typing import List, Dict, Any, Optional
 
 import requests
 import speech_recognition as sr
 import pyttsx3
 from backend.prompt import SYSTEM_PROMPT
-
+import datetime as dt
 # ================== 配置 ==================
 LLM_ENDPOINT = os.getenv("LLM_ENDPOINT", "http://127.0.0.1:8001/llm")
 LLM_MODEL = os.getenv("LLAMA_MODEL", "qwen2.5-3b-instruct")
@@ -61,8 +62,18 @@ class LLMClient:
                 self._last_sent.pop(k, None)
 
     def chat(self, temperature: float = 0.7, max_tokens: int = 512) -> str:
+        # 复制一份消息历史，避免修改原始列表
+        messages_to_send = [msg.copy() for msg in self.messages]
+        
+        # 检查并替换 system prompt 中的日期占位符
+        if messages_to_send and messages_to_send[0]['role'] == 'system':
+            today_str = dt.date.today().isoformat()
+            original_prompt = messages_to_send[0]['content']
+            # 使用 .replace() 方法替换占位符
+            updated_prompt = original_prompt.replace('{{current_date}}', today_str)
+            messages_to_send[0]['content'] = updated_prompt
         payload = {
-            "messages": self.messages,
+            "messages": messages_to_send,
             "session_id": self.session_id,
             "temperature": temperature,
             "max_tokens": max_tokens,
@@ -95,10 +106,11 @@ class TTS:
 
         # 独立线程异步播报，避免阻塞主循环
         self._lock = threading.Lock()
-
     def _choose_voice(self, contains: Optional[str]):
         if contains:
-            for v in self.engine.getProperty("voices"):
+            # <-- 2. 修复点：使用 typing.cast
+            voices = typing.cast(list, self.engine.getProperty("voices"))
+            for v in voices:
                 name = getattr(v, "name", "") or ""
                 if contains.lower() in name.lower():
                     self.engine.setProperty("voice", v.id)
@@ -129,19 +141,19 @@ class ASR:
         with sr.Microphone() as mic:
             if self.rec.dynamic_energy_threshold:
                 print(">>> 环境噪声校准中（1秒）…")
-                self.rec.adjust_for_ambient_noise(mic, duration=1.0)
+                self.rec.adjust_for_ambient_noise(mic, duration=1)
             print(f"🎙️ 开始说话（最长 {self.phrase_time_limit}s）…")
             audio = self.rec.listen(mic, timeout=None, phrase_time_limit=self.phrase_time_limit)
         # 优先 Google，失败则退回 Sphinx
         if USE_GOOGLE:
             try:
-                text = self.rec.recognize_google(audio, language=self.lang)
+                text = self.rec.recognize_google(audio, language=self.lang) # type: ignore
                 return text.strip()
             except Exception as e:
                 print(f"[Google 识别失败，退回 Sphinx] {e}")
         # Sphinx（离线）
         try:
-            text = self.rec.recognize_sphinx(audio, language=self.lang)
+            text = self.rec.recognize_sphinx(audio, language=self.lang) # type: ignore
             return text.strip()
         except Exception as e:
             print(f"[Sphinx 识别失败] {e}")
