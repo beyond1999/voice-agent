@@ -9,7 +9,7 @@
 https://www.bilibili.com/video/BV1K4szzvENJ/
 ---
 ### 简单讲解：
-https://space.bilibili.com/416895726?spm_id_from=333.788.upinfo.head.click
+bilibili.com/video/BV1bNskzjEYv/
 ---
 ## 🚀 功能特性
 
