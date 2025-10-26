@@ -29,7 +29,7 @@ CLOUD_BASE_DEFAULT = "https://api.deepseek.com/v1"
 CLOUD_MODEL_DEFAULT = "deepseek-chat"
 CLOUD_AUTH_SCHEME_DEFAULT = "Bearer"
 # 你说先写死 Key，就写在这里；也支持用环境变量覆盖
-LLM_API_KEY = "sk-f415f1812d0b406792822e9cef183c6b" # os.getenv("LLM_API_KEY", "sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxx")
+LLM_API_KEY = "" # os.getenv("LLM_API_KEY", "sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxx")
 LLM_AUTH_SCHEME = os.getenv("LLM_AUTH_SCHEME", CLOUD_AUTH_SCHEME_DEFAULT)
 
 # ================== 统一配置读取 ==================
