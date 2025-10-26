@@ -1,9 +1,12 @@
 
-# 🧠 Local Desktop AI Agent
+# 🧠 Voice Agent
 
 一个可以**语音控制电脑**、**执行系统命令**、**读写文件**、**调用本地/云端大模型**的智能桌面助手。
 本项目以 **FastAPI + LangGraph + Qwen LLM + Whisper ASR** 为核心，支持 ReAct 思维链式推理与多步工具调用。
 
+
+演示视频地址：
+bilibili.com/video/BV1dNszzUEoo/?spm_id_from=333.1387.homepage.video_card.click
 ---
 
 ## 🚀 功能特性
@@ -173,18 +176,7 @@ Agent 通过 LangGraph 实现多步“思考→行动→反思”循环，并可
 
 ---
 
-## 🧑‍💻 贡献与协作
 
-项目支持多人模块开发：
-
-| 成员     | 负责模块               | 状态 |
-| ------ | ------------------ | -- |
-| 你（项目主） | 核心架构、LLM接口、系统集成    | ✅  |
-| 队友A    | 工具开发（Word、命令、媒体控制） | 🔄 |
-| 队友B    | ASR模块（语音转文字）       | 🔄 |
-| 队友C    | UI前端或WebSocket交互   | 🧩 |
-
----
 
 ## 📜 License
 

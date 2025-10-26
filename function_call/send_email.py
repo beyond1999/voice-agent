@@ -12,7 +12,6 @@ load_dotenv()
 # 对于 QQ/163 邮箱, 这是 "授权码"
 SENDER_EMAIL =  os.getenv("SENDER_EMAIL")
 SENDER_PASSWORD = os.getenv("SENDER_PASSWORD")
-
 # --- 常见邮箱的 SMTP 服务器配置 ---
 SMTP_SETTINGS = {
     # 域名: (服务器地址, 端口号)

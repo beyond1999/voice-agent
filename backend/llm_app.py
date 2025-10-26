@@ -168,6 +168,8 @@ async def llm_endpoint(req: ChatReq, x_idempotency_key: Optional[str] = Header(N
 
     try:
         text, model_used = await _chat_via_llama(req)
+        # if not text.endswith("\"}"):
+        #     text = text + "\"}"
     except Exception as e:
         text = f"[LLM 调用失败] {type(e).__name__}: {e}"
         model_used = "error"

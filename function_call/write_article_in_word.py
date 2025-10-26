@@ -4,7 +4,8 @@ import re
 import time
 
 def _get_desktop_dir() -> str:
-    return os.path.join(os.path.expandvars("%USERPROFILE%"), "Desktop")
+    return "C:\\Users\\gofor\\OneDrive\\Desktop"
+    # return os.path.join(os.path.expandvars("%USERPROFILE%"), "Desktop")
 
 def _safe_filename(name: str, default="Untitled") -> str:
     name = (name or "").strip()

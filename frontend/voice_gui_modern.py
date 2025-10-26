@@ -17,7 +17,7 @@ from backend.voice_interact import LLMClient, ASR, TTS, SYSTEM_PROMPT, LLM_ENDPO
 import urllib.request, urllib.error  # 新增：轻量 HTTP 客户端（免第三方依赖）
 
 # … 颜色定义处，新增一种“动作中的气泡”颜色
-BUBBLE_ACTION = "#a855f7"  # Violet-500：执行过程/网关步骤
+BUBBLE_ACTION = "#334155"  # Violet-500：执行过程/网关步骤
 # 网关服务地址（可从环境变量覆盖）
 GATEWAY_ENDPOINT = os.getenv("GATEWAY_ENDPOINT", "http://127.0.0.1:8077")
 
@@ -28,8 +28,10 @@ APP_TITLE = "Voice Chat · Modern UI"
 # 背景 (由深到浅，建立层次)
 PRIMARY_BG = "#1e293b"     # Slate-800: 主背景
 PANEL_BG   = "#334155"     # Slate-700: 面板/工具栏
-BUBBLE_AI  = "#475569"     # Slate-600: AI气泡
-BUBBLE_ME  = "#2563eb"     # Blue-600: 用户气泡
+BUBBLE_DARKGRAY  = "#3b4a63"     # Slate-600: AI气泡
+BUBBLE_BLUE  = "#2563eb"     # Blue-600: 用户气泡
+# BUBBLE_LIGHTGRAY = "#6b7a91"
+BUBBLE_LIGHTGRAY = "#64748b"
 
 # 文本
 TEXT_MAIN  = "#e2e8f0"     # Slate-200: 主文本
@@ -227,7 +229,7 @@ class ModernVoiceChat(tk.Tk):
         self.entry = tk.Text(wrap, height=4, wrap=tk.WORD, font=("Segoe UI", 11),
                              fg=TEXT_MAIN, bg="#0f172a", insertbackground=TEXT_MAIN,
                              relief=tk.FLAT, highlightthickness=2,
-                             highlightbackground=PANEL_BG, highlightcolor=BUBBLE_ME)
+                             highlightbackground=PANEL_BG, highlightcolor=BUBBLE_BLUE)
         self.entry.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(10, 8), pady=10)
 
         # 右键菜单
@@ -235,7 +237,7 @@ class ModernVoiceChat(tk.Tk):
 
     # ---------------- UI helpers ----------------
     def _mk_btn(self, parent, text, cmd, solid=False):
-        bg = BUBBLE_ME if solid else BUBBLE_AI
+        bg = BUBBLE_BLUE if solid else BUBBLE_DARKGRAY
         fg = "#ffffff"
         hover_bg = "#1d4ed8" if solid else "#64748b"
 
@@ -324,17 +326,21 @@ class ModernVoiceChat(tk.Tk):
 
         # 配色
         if is_user:
-            bubble_color = BUBBLE_ME
+            bubble_color = BUBBLE_LIGHTGRAY
+            # bubble_color = BUBBLE_BLUE
             text_fg = "#ffffff"
             justify = tk.RIGHT
         else:
             if msg_type == "error":
                 bubble_color = DANGER
             elif msg_type == "action":
-                bubble_color = BUBBLE_ACTION  # <--- 新增：动作用紫色
+                bubble_color = BUBBLE_ACTION  # <--- 新增：动作用色
             else:
-                bubble_color = BUBBLE_AI
+                # bubble_color = BUBBLE_AI
+                # bubble_color = "#0d9488"
+                bubble_color = BUBBLE_BLUE
             text_fg = TEXT_MAIN
+
             justify = tk.LEFT
 
         # 先测量文本尺寸
@@ -376,7 +382,7 @@ class ModernVoiceChat(tk.Tk):
 
         # 右键复制
         def show_context_menu(event):
-            menu = tk.Menu(self, tearoff=0, bg=PANEL_BG, fg=TEXT_MAIN, activebackground=BUBBLE_AI)
+            menu = tk.Menu(self, tearoff=0, bg=PANEL_BG, fg=TEXT_MAIN, activebackground=BUBBLE_DARKGRAY)
             menu.add_command(label="Copy Text", command=lambda: self.clipboard_clear() or self.clipboard_append(text))
             menu.tk_popup(event.x_root, event.y_root)
 
