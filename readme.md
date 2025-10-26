@@ -5,10 +5,12 @@
 本项目以 **FastAPI + LangGraph + Qwen LLM + Whisper ASR** 为核心，支持 ReAct 思维链式推理与多步工具调用。
 
 
-演示视频地址：
+### 演示视频地址：
 https://www.bilibili.com/video/BV1K4szzvENJ/
 ---
-
+### 简单讲解：
+https://space.bilibili.com/416895726?spm_id_from=333.788.upinfo.head.click
+---
 ## 🚀 功能特性
 
 | 模块           | 功能                                      | 技术                        |
