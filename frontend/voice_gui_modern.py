@@ -13,6 +13,13 @@ from functools import partial
 
 # —— 你现有的语音/LLM 模块（名字不同请按你的项目调整导入路径）——
 from backend.voice_interact import LLMClient, ASR, TTS, SYSTEM_PROMPT, LLM_ENDPOINT, LLM_MODEL
+# imports 顶部附近
+import urllib.request, urllib.error  # 新增：轻量 HTTP 客户端（免第三方依赖）
+
+# … 颜色定义处，新增一种“动作中的气泡”颜色
+BUBBLE_ACTION = "#a855f7"  # Violet-500：执行过程/网关步骤
+# 网关服务地址（可从环境变量覆盖）
+GATEWAY_ENDPOINT = os.getenv("GATEWAY_ENDPOINT", "http://127.0.0.1:8077")
 
 # —— 新增：持久化（SQLite）
 from backend import persistence
@@ -34,6 +41,11 @@ DANGER     = "#dc2626"     # Red-600:   错误提示
 WARN       = "#f59e0b"     # Amber-500: 警告 (如“聆听中”)
 MUTED      = "#64748b"     # Slate-500: 次要元素
 
+# 固定内容宽度（作为对齐参考线），以及蓝色气泡相对右边的留白
+CONTENT_WIDTH = 960
+USER_RIGHT_OFFSET = 60
+BUBBLE_MAX_WIDTH = 600   # 蓝色/灰色气泡最大宽度（可按需调整）
+
 def create_rounded_bubble(width, height, radius, color):
     """动态创建带圆角的矩形图片"""
     image = Image.new("RGBA", (width, height), (0, 0, 0, 0))
@@ -44,8 +56,12 @@ def create_rounded_bubble(width, height, radius, color):
 class ModernVoiceChat(tk.Tk):
     def __init__(self):
         super().__init__()
+
+        self._suppress_auto_scroll = False  # 渲染中禁止 _add_bubble 自动滚动
+        self._session_scroll = {}  # 记忆每个会话的滚动位置（0~1）
+
         self.title(APP_TITLE)
-        self.geometry("920x640")
+        self.geometry("1200x640")
         self.minsize(760, 520)
         self.configure(bg=PRIMARY_BG)
         self.font_main = ("Inter", 11, "normal")
@@ -53,7 +69,8 @@ class ModernVoiceChat(tk.Tk):
         # ===== Persistence =====
         persistence.init_db()
         # 每次打开应用就新建一个会话
-        self.current_sid = persistence.create_session()
+        _sessions = persistence.list_sessions()  # 已按 created_at DESC 排序
+        self.current_sid = _sessions[0]["id"] if _sessions else persistence.create_session()
 
         # ===== Core =====
         self.llm = LLMClient(LLM_ENDPOINT, LLM_MODEL)
@@ -84,6 +101,9 @@ class ModernVoiceChat(tk.Tk):
 
         self._set_status("Ready")
         self._setup_input_context_menu()
+        self.on_select_session(self.current_sid)
+
+
 
     # ---------------- UI Builders ----------------
     def _build_header(self):
@@ -159,7 +179,8 @@ class ModernVoiceChat(tk.Tk):
         # Style scrollbar
         style = ttk.Style(self)
         style.theme_use("clam")
-        style.configure("Vertical.TScrollbar", width=8,
+        style.configure("Vertical.TScrollbar",
+                        # width=8,
                         troughcolor=PANEL_BG, background=MUTED,
                         bordercolor=PANEL_BG, arrowcolor=TEXT_MAIN)
 
@@ -307,7 +328,12 @@ class ModernVoiceChat(tk.Tk):
             text_fg = "#ffffff"
             justify = tk.RIGHT
         else:
-            bubble_color = DANGER if msg_type == "error" else BUBBLE_AI
+            if msg_type == "error":
+                bubble_color = DANGER
+            elif msg_type == "action":
+                bubble_color = BUBBLE_ACTION  # <--- 新增：动作用紫色
+            else:
+                bubble_color = BUBBLE_AI
             text_fg = TEXT_MAIN
             justify = tk.LEFT
 
@@ -356,7 +382,8 @@ class ModernVoiceChat(tk.Tk):
 
         bubble_lbl.bind("<Button-3>", show_context_menu)
 
-        self.after(50, lambda: self.canvas.yview_moveto(1.0))
+        if not getattr(self, "_suppress_auto_scroll", False):
+            self.after(50, lambda: self.canvas.yview_moveto(1.0))
 
     def _setup_input_context_menu(self):
         """为文本输入框创建右键菜单（剪切/复制/粘贴）"""
@@ -426,6 +453,15 @@ class ModernVoiceChat(tk.Tk):
         text = self.entry.get("1.0", tk.END).strip()
         if not text:
             return
+        # 网关调用：/gw <query>
+        if text.startswith("/gw "):
+            query = text[4:].strip()
+            if not query:
+                return
+            self._append_user(text)  # 也把这条命令显示出来
+            threading.Thread(target=self._gateway_round, args=(query,), daemon=True).start()
+            return
+
         self.entry.delete("1.0", tk.END)
         self._append_user(text)
         threading.Thread(target=self._llm_reply, args=(text,), daemon=True).start()
@@ -453,6 +489,13 @@ class ModernVoiceChat(tk.Tk):
         self._ui(self._add_bubble, "assistant", text, ts, msg_type)
         # 持久化（记录模型名）
         persistence.add_message(self.current_sid, "assistant", text, msg_type=msg_type, model=LLM_MODEL)
+
+    def _append_action(self, text: str):
+        """执行过程/工具步骤的可视化（紫色气泡），会落库 msg_type=action。"""
+        ts = time.strftime("%H:%M:%S")
+        self.history.append({"role": "assistant", "text": text, "ts": ts, "type": "action"})
+        self._ui(self._add_bubble, "assistant", text, ts, "action")
+        persistence.add_message(self.current_sid, "assistant", text, msg_type="action", model="gateway")
 
     def _llm_reply(self, user_text: str):
         try:
@@ -486,6 +529,34 @@ class ModernVoiceChat(tk.Tk):
             self.listening.set(False)
             self._append_assistant(f"[ASR Error] {type(e).__name__}: {e}")
             self._set_status("ASR Error", "error")
+
+    def _gateway_round(self, query: str):
+        try:
+            self._set_status("Gateway running…", "thinking")
+            self._append_action("正在通过网关处理: " + query)
+
+            payload = json.dumps({"query": query}).encode("utf-8")
+            req = urllib.request.Request(
+                GATEWAY_ENDPOINT.rstrip("/") + "/run",
+                data=payload,
+                headers={"Content-Type": "application/json"},
+                method="POST",
+            )
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+
+            # 逐条步骤（动作态，紫色）
+            for step in data.get("steps", []):
+                self._append_action(step)
+
+            # 最终回答（助手态，原色）
+            final = data.get("answer", "(no answer)")
+            self._append_assistant(final)
+            self._set_status("Ready", "idle")
+
+        except Exception as e:
+            self._append_assistant(f"[Gateway Error] {type(e).__name__}: {e}", msg_type="error")
+            self._set_status("Error", "error")
 
     # ---------------- Sessions (list/new/select/delete) ----------------
     def _refresh_session_list(self):
@@ -531,22 +602,48 @@ class ModernVoiceChat(tk.Tk):
         self._refresh_session_list()
 
     def on_select_session(self, sid: str):
+        # 1) 先保存当前会话的滚动位置（0~1）
+        if hasattr(self, "current_sid") and self.current_sid:
+            try:
+                self._session_scroll[self.current_sid] = self.canvas.yview()[0]
+            except Exception:
+                pass
+
+        # 2) 切换会话 & 关闭自动滚动
         self.current_sid = sid
-        # 清 UI 并加载消息
+        self._suppress_auto_scroll = True
+
+        # 3) 清 UI 并加载消息
         for w in list(self.inner.children.values()):
             w.destroy()
         self.history.clear()
         msgs = persistence.get_messages(sid)
         for m in msgs:
-            # ts 从 ISO 字符串取最后 8 位（HH:MM:SS）；若无则取当前
             ts = m.get("ts", "")
             ts = ts[-8:] if ts and len(ts) >= 8 else time.strftime("%H:%M:%S")
             role = "user" if m["role"] == "user" else "assistant"
             msg_type = m.get("msg_type", "normal")
             self.history.append({"role": role, "text": m["content"], "ts": ts, "type": msg_type})
             self._add_bubble(role, m["content"], ts, msg_type)
+
         self._set_status("Session loaded")
         self._refresh_session_list()
+
+        # 4) 强制刷新滚动区域
+        self.canvas.update_idletasks()
+        self.canvas.configure(scrollregion=self.canvas.bbox("all"))
+
+        # 5) 复位滚动条位置：
+        #    - 优先恢复这个会话上次的位置
+        #    - 否则默认看“最新消息”（底部）；如果内容很短，也能正常显示
+        pos = self._session_scroll.get(sid, 1.0)
+        try:
+            self.canvas.yview_moveto(pos)
+        except Exception:
+            self.canvas.yview_moveto(0.0)  # 兜底：回到顶部
+
+        # 6) 恢复自动滚动
+        self._suppress_auto_scroll = False
 
     def on_delete_session(self, sid: str):
         if not messagebox.askyesno("Confirm delete", "确定删除该会话及其所有消息？此操作不可恢复。"):
@@ -554,10 +651,15 @@ class ModernVoiceChat(tk.Tk):
         persistence.delete_session(sid)
         # 若删的是当前会话，切到一个新会话
         if sid == self.current_sid:
-            self.current_sid = persistence.create_session()
+            if len(persistence.list_sessions()) == 0:
+                self.current_sid = persistence.create_session()
+            else:
+                self.current_sid = persistence.list_sessions()[0]
             self.on_clear()
         self._refresh_session_list()
         self._set_status("Session deleted")
+        # 强制刷新滚动区域，使滚轮立即可用
+
 
 if __name__ == "__main__":
     app = ModernVoiceChat()
